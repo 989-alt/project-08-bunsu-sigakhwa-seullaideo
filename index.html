@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>분수 시각화 슬라이더 · Day 08</title>
+<style>
+  :root {
+    --canvas: #ffffff;
+    --ink: #000000;
+    --hairline: #e6e6e6;
+    --hairline-soft: #f1f1f1;
+    --surface-soft: #f7f7f5;
+    --block-lilac: #c5b0f4;
+    --block-mint: #c8e6cd;
+    --block-lime: #dceeb1;
+    --block-cream: #f4ecd6;
+    --block-pink: #efd4d4;
+    --accent-magenta: #ff3d8b;
+    --semantic-success: #1ea64a;
+    --ink-on-color: #000000;
+
+    --r-md: 8px;
+    --r-lg: 24px;
+    --r-pill: 50px;
+
+    --gap: 16px;
+    --gap-lg: 24px;
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--canvas);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* focus */
+  :focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* skip link */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+
+  .page {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  /* header */
+  .header {
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--hairline);
+    padding: 20px 0 22px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--block-lime);
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+  }
+  .headline {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 540;
+    letter-spacing: -0.02em;
+    margin: 0;
+    line-height: 1.1;
+  }
+  .subhead {
+    font-size: 16px;
+    margin: 0;
+    color: #2a2a2a;
+  }
+
+  /* fraction panels row */
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-lg);
+  }
+  @media (max-width: 900px) {
+    .panels { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    border-radius: var(--r-lg);
+    padding: 24px 24px 22px;
+    border: 2px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .panel.a { background: var(--block-lilac); }
+  .panel.b { background: var(--block-mint); }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .panel-tag {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+  }
+  .fraction-big {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: var(--font-sans);
+    line-height: 1;
+    user-select: none;
+  }
+  .fraction-big .num,
+  .fraction-big .den {
+    font-size: clamp(56px, 8vw, 96px);
+    font-weight: 540;
+    letter-spacing: -0.03em;
+    min-width: 1.2ch;
+    text-align: center;
+  }
+  .fraction-big .bar {
+    width: 90%;
+    height: 6px;
+    background: var(--ink);
+    margin: 4px 0;
+    border-radius: 3px;
+  }
+  .fraction-mixed {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    margin-top: 4px;
+    opacity: 0.85;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .slider-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .slider-row label {
+    font-size: 15px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .slider-row .value-pill {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    background: #fff;
+    border: 1.5px solid var(--ink);
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    min-width: 44px;
+    text-align: center;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(0,0,0,0.18);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--ink);
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1.5px var(--ink);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--ink);
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1.5px var(--ink);
+    cursor: pointer;
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb {
+    outline: 3px solid var(--accent-magenta);
+    outline-offset: 2px;
+  }
+
+  .equivs {
+    background: #fff;
+    border: 1.5px solid var(--ink);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    overflow-wrap: break-word;
+  }
+  .equivs strong { font-family: var(--font-sans); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 8px; }
+
+  /* visualization row */
+  .viz-row {
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--gap-lg);
+  }
+  @media (max-width: 1024px) {
+    .viz-row { grid-template-columns: 1fr; }
+  }
+  .viz-card {
+    border: 2px solid var(--ink);
+    border-radius: var(--r-lg);
+    background: var(--surface-soft);
+    padding: 18px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .viz-card h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 540;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .viz-card h3 .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .viz-card svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .legend {
+    display: flex;
+    gap: 14px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend .swatch {
+    width: 14px; height: 14px; border: 1.5px solid var(--ink);
+  }
+  .legend .swatch.a { background: var(--block-lilac); }
+  .legend .swatch.b { background: var(--block-mint); }
+
+  /* compare bar */
+  .compare {
+    margin-top: 36px;
+    background: var(--canvas);
+    border: 2px solid var(--ink);
+    border-radius: var(--r-lg);
+    padding: 28px 28px 24px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 24px;
+  }
+  @media (max-width: 700px) {
+    .compare { grid-template-columns: 1fr; text-align: center; }
+  }
+  .compare .frac-mini {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 540;
+    font-family: var(--font-sans);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .compare .frac-mini .num,
+  .compare .frac-mini .den { display: block; text-align: center; }
+  .compare .frac-mini .num { border-bottom: 4px solid var(--ink); padding-bottom: 2px; }
+  .compare .frac-mini.larger {
+    color: var(--ink);
+    text-shadow: 0 0 0 var(--ink);
+    position: relative;
+  }
+  .compare .frac-mini.larger::after {
+    content: "";
+    position: absolute;
+    left: -10px; right: -10px; top: -10px; bottom: -10px;
+    border: 3px solid var(--accent-magenta);
+    border-radius: 14px;
+    pointer-events: none;
+  }
+  .compare .symbol {
+    font-size: clamp(64px, 10vw, 120px);
+    font-weight: 540;
+    line-height: 1;
+    text-align: center;
+    color: var(--accent-magenta);
+    letter-spacing: -0.04em;
+  }
+  .compare .verdict {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--block-pink);
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+    justify-self: end;
+  }
+  @media (max-width: 700px) {
+    .compare .verdict { justify-self: center; }
+  }
+
+  /* action bar */
+  .actions {
+    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  .btn {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 480;
+    border: 2px solid var(--ink);
+    background: var(--canvas);
+    color: var(--ink);
+    padding: 10px 20px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease;
+    line-height: 1.2;
+  }
+  .btn:hover { background: var(--ink); color: #fff; }
+  .btn.primary {
+    background: var(--ink);
+    color: #fff;
+  }
+  .btn.primary:hover {
+    background: var(--accent-magenta);
+    border-color: var(--accent-magenta);
+    color: #fff;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* common denom result */
+  .commondenom {
+    margin-top: 22px;
+    padding: 20px 24px;
+    background: var(--block-cream);
+    border: 2px solid var(--ink);
+    border-radius: var(--r-lg);
+    display: none;
+  }
+  .commondenom.show { display: block; }
+  .commondenom h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    font-weight: 540;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .commondenom p {
+    margin: 4px 0;
+    font-size: 18px;
+    font-family: var(--font-sans);
+  }
+  .commondenom .frac-inline {
+    display: inline-flex;
+    flex-direction: column;
+    vertical-align: middle;
+    font-weight: 540;
+    line-height: 1;
+    text-align: center;
+    margin: 0 4px;
+  }
+  .commondenom .frac-inline .num { border-bottom: 2.5px solid var(--ink); padding: 0 4px 2px; }
+  .commondenom .frac-inline .den { padding-top: 2px; }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(140%);
+    background: var(--semantic-success);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 480;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    transition: transform 240ms ease, opacity 240ms ease, visibility 240ms;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    min-height: 0;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  /* print */
+  @media print {
+    body { background: #fff; }
+    .actions, .header .eyebrow, .toast { display: none; }
+    .panel, .viz-card, .compare, .commondenom { break-inside: avoid; }
+  }
+
+  /* footer */
+  .foot {
+    margin-top: 48px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 18px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: #555;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+<a class="sr-only" href="#main">본문으로 건너뛰기</a>
+<main id="main" class="page">
+  <header class="header" aria-labelledby="title">
+    <span class="eyebrow">008 · MATH · 분수 시각화</span>
+    <h1 class="headline" id="title">분수 시각화 슬라이더</h1>
+    <p class="subhead">두 분수를 슬라이더로 조작해 원·막대·수직선에서 즉시 비교합니다.</p>
+  </header>
+
+  <section class="panels" aria-label="두 분수 입력">
+    <!-- Panel A -->
+    <article class="panel a" id="panel-a" aria-labelledby="frac-a-label">
+      <div class="panel-head">
+        <span class="panel-tag" id="frac-a-label">분수 A</span>
+        <span class="fraction-mixed" id="mixed-a" aria-live="polite"></span>
+      </div>
+      <div class="fraction-big" aria-hidden="true">
+        <span class="num" id="num-a-big">1</span>
+        <span class="bar"></span>
+        <span class="den" id="den-a-big">2</span>
+      </div>
+      <div class="controls">
+        <div class="slider-row">
+          <label for="num-a">분자
+            <input type="range" id="num-a" min="0" max="12" step="1" value="1" aria-describedby="num-a-val" />
+          </label>
+          <span class="value-pill" id="num-a-val">1</span>
+        </div>
+        <div class="slider-row">
+          <label for="den-a">분모
+            <input type="range" id="den-a" min="1" max="12" step="1" value="2" aria-describedby="den-a-val" />
+          </label>
+          <span class="value-pill" id="den-a-val">2</span>
+        </div>
+      </div>
+      <div class="equivs" id="equivs-a"><strong>동치분수</strong><span id="equivs-a-text">1/2 = 2/4 = 3/6 = 4/8</span></div>
+    </article>
+
+    <!-- Panel B -->
+    <article class="panel b" id="panel-b" aria-labelledby="frac-b-label">
+      <div class="panel-head">
+        <span class="panel-tag" id="frac-b-label">분수 B</span>
+        <span class="fraction-mixed" id="mixed-b" aria-live="polite"></span>
+      </div>
+      <div class="fraction-big" aria-hidden="true">
+        <span class="num" id="num-b-big">1</span>
+        <span class="bar"></span>
+        <span class="den" id="den-b-big">3</span>
+      </div>
+      <div class="controls">
+        <div class="slider-row">
+          <label for="num-b">분자
+            <input type="range" id="num-b" min="0" max="12" step="1" value="1" aria-describedby="num-b-val" />
+          </label>
+          <span class="value-pill" id="num-b-val">1</span>
+        </div>
+        <div class="slider-row">
+          <label for="den-b">분모
+            <input type="range" id="den-b" min="1" max="12" step="1" value="3" aria-describedby="den-b-val" />
+          </label>
+          <span class="value-pill" id="den-b-val">3</span>
+        </div>
+      </div>
+      <div class="equivs" id="equivs-b"><strong>동치분수</strong><span id="equivs-b-text">1/3 = 2/6 = 3/9 = 4/12</span></div>
+    </article>
+  </section>
+
+  <section class="viz-row" aria-label="세 가지 시각화" id="viz-row">
+    <!-- Pie -->
+    <div class="viz-card">
+      <h3><span class="dot" style="background: var(--block-lilac); border: 1.5px solid var(--ink);"></span>원형</h3>
+      <svg id="svg-pie" viewBox="0 0 260 140" role="img" aria-labelledby="pie-title">
+        <title id="pie-title">분수 A와 분수 B의 원형 비교</title>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch a"></span>분수 A</span>
+        <span><span class="swatch b"></span>분수 B</span>
+      </div>
+    </div>
+    <!-- Bar -->
+    <div class="viz-card">
+      <h3><span class="dot" style="background: var(--block-mint); border: 1.5px solid var(--ink);"></span>막대</h3>
+      <svg id="svg-bar" viewBox="0 0 260 140" role="img" aria-labelledby="bar-title">
+        <title id="bar-title">분수 A와 분수 B의 막대 비교</title>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch a"></span>분수 A</span>
+        <span><span class="swatch b"></span>분수 B</span>
+      </div>
+    </div>
+    <!-- Number line -->
+    <div class="viz-card">
+      <h3><span class="dot" style="background: var(--block-cream); border: 1.5px solid var(--ink);"></span>수직선</h3>
+      <svg id="svg-line" viewBox="0 0 260 140" role="img" aria-labelledby="line-title">
+        <title id="line-title">분수 A와 분수 B의 수직선 위치</title>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch a"></span>분수 A</span>
+        <span><span class="swatch b"></span>분수 B</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="compare" aria-label="크기 비교 결과">
+    <div class="frac-mini" id="cmp-a"><span class="num">1</span><span class="den">2</span></div>
+    <div class="symbol" id="cmp-symbol" aria-hidden="true">&gt;</div>
+    <div class="frac-mini" id="cmp-b"><span class="num">1</span><span class="den">3</span></div>
+    <div class="verdict" id="cmp-verdict" aria-live="polite">분수 A가 더 큽니다</div>
+  </section>
+
+  <div class="commondenom" id="commondenom" aria-live="polite">
+    <h3>통분 결과</h3>
+    <p id="commondenom-text">통분하기 버튼을 누르면 두 분수를 공통 분모로 바꾼 결과가 표시됩니다.</p>
+  </div>
+
+  <section class="actions" aria-label="동작 버튼">
+    <button class="btn primary" id="btn-common" type="button">통분하기</button>
+    <button class="btn" id="btn-example" type="button">예시 불러오기</button>
+    <button class="btn" id="btn-reset" type="button">초기화</button>
+    <button class="btn" id="btn-png" type="button">PNG 저장</button>
+  </section>
+
+  <footer class="foot">
+    <span>DAY 08 · 분수 시각화 슬라이더</span>
+    <span>DESIGN.md: Figma</span>
+  </footer>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- math helpers ----------
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; };
+  const lcm = (a, b) => Math.abs(a * b) / gcd(a, b);
+
+  function simplify(n, d) {
+    if (d === 0) return { n, d };
+    const g = gcd(n, d);
+    return { n: n / g, d: d / g };
+  }
+
+  function equivalents(n, d, count = 4) {
+    const s = simplify(n, d);
+    const out = [];
+    for (let k = 1; k <= count; k++) out.push({ n: s.n * k, d: s.d * k });
+    return out;
+  }
+
+  function toMixed(n, d) {
+    if (d === 0) return null;
+    if (n < d) return null;
+    const whole = Math.floor(n / d);
+    const rem = n - whole * d;
+    if (rem === 0) return { whole, n: 0, d };
+    const s = simplify(rem, d);
+    return { whole, n: s.n, d: s.d };
+  }
+
+  // ---------- state ----------
+  const state = {
+    a: { n: 1, d: 2 },
+    b: { n: 1, d: 3 },
+  };
+
+  const examples = [
+    { a: { n: 1, d: 2 }, b: { n: 1, d: 3 } },
+    { a: { n: 2, d: 3 }, b: { n: 3, d: 4 } },
+    { a: { n: 3, d: 4 }, b: { n: 5, d: 8 } },
+    { a: { n: 4, d: 6 }, b: { n: 2, d: 3 } },
+    { a: { n: 5, d: 6 }, b: { n: 7, d: 12 } },
+  ];
+  let exampleIdx = 0;
+
+  // ---------- DOM ----------
+  const $ = (id) => document.getElementById(id);
+
+  const numA = $("num-a"), denA = $("den-a"), numB = $("num-b"), denB = $("den-b");
+  const numAVal = $("num-a-val"), denAVal = $("den-a-val"), numBVal = $("num-b-val"), denBVal = $("den-b-val");
+  const numABig = $("num-a-big"), denABig = $("den-a-big"), numBBig = $("num-b-big"), denBBig = $("den-b-big");
+  const equivsAText = $("equivs-a-text"), equivsBText = $("equivs-b-text");
+  const mixedA = $("mixed-a"), mixedB = $("mixed-b");
+  const cmpA = $("cmp-a"), cmpB = $("cmp-b"), cmpSymbol = $("cmp-symbol"), cmpVerdict = $("cmp-verdict");
+  const svgPie = $("svg-pie"), svgBar = $("svg-bar"), svgLine = $("svg-line");
+  const commondenom = $("commondenom"), commondenomText = $("commondenom-text");
+  const toast = $("toast");
+
+  function setSliderBounds() {
+    // numerator max = denominator * 2 (allow improper up to 2)
+    numA.max = state.a.d * 2;
+    numB.max = state.b.d * 2;
+    if (Number(numA.value) > Number(numA.max)) numA.value = numA.max;
+    if (Number(numB.value) > Number(numB.max)) numB.value = numB.max;
+  }
+
+  function renderAll() {
+    // values from state
+    numA.value = state.a.n;
+    denA.value = state.a.d;
+    numB.value = state.b.n;
+    denB.value = state.b.d;
+
+    numAVal.textContent = state.a.n;
+    denAVal.textContent = state.a.d;
+    numBVal.textContent = state.b.n;
+    denBVal.textContent = state.b.d;
+    numABig.textContent = state.a.n;
+    denABig.textContent = state.a.d;
+    numBBig.textContent = state.b.n;
+    denBBig.textContent = state.b.d;
+
+    // equivalents
+    equivsAText.textContent = equivalents(state.a.n, state.a.d, 4)
+      .map(f => `${f.n}/${f.d}`).join(" = ");
+    equivsBText.textContent = equivalents(state.b.n, state.b.d, 4)
+      .map(f => `${f.n}/${f.d}`).join(" = ");
+
+    // mixed
+    const mA = toMixed(state.a.n, state.a.d);
+    const mB = toMixed(state.b.n, state.b.d);
+    mixedA.textContent = mA ? `대분수: ${mA.whole}${mA.n ? ` ${mA.n}/${mA.d}` : ""}` : "";
+    mixedB.textContent = mB ? `대분수: ${mB.whole}${mB.n ? ` ${mB.n}/${mB.d}` : ""}` : "";
+
+    // compare display fractions
+    cmpA.innerHTML = `<span class="num">${state.a.n}</span><span class="den">${state.a.d}</span>`;
+    cmpB.innerHTML = `<span class="num">${state.b.n}</span><span class="den">${state.b.d}</span>`;
+
+    const aVal = state.a.n / state.a.d;
+    const bVal = state.b.n / state.b.d;
+    cmpA.classList.toggle("larger", aVal > bVal);
+    cmpB.classList.toggle("larger", bVal > aVal);
+
+    if (aVal > bVal) {
+      cmpSymbol.textContent = ">";
+      cmpVerdict.textContent = "분수 A가 더 큽니다";
+    } else if (aVal < bVal) {
+      cmpSymbol.textContent = "<";
+      cmpVerdict.textContent = "분수 B가 더 큽니다";
+    } else {
+      cmpSymbol.textContent = "=";
+      cmpVerdict.textContent = "두 분수가 같습니다";
+    }
+
+    renderPie();
+    renderBar();
+    renderLine();
+  }
+
+  // ---------- SVG renderers ----------
+  function renderPie() {
+    const w = 260, h = 140;
+    const r = 50;
+    const cy = h / 2 + 4;
+    const cxA = 70, cxB = 190;
+    svgPie.innerHTML = `
+      ${pieGroup(cxA, cy, r, state.a.n, state.a.d, "var(--block-lilac)", "분수 A")}
+      ${pieGroup(cxB, cy, r, state.b.n, state.b.d, "var(--block-mint)", "분수 B")}
+      <text x="${cxA}" y="${h - 6}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#000">${state.a.n}/${state.a.d}</text>
+      <text x="${cxB}" y="${h - 6}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#000">${state.b.n}/${state.b.d}</text>
+    `;
+  }
+
+  function pieGroup(cx, cy, r, n, d, color, label) {
+    if (d <= 0) return "";
+    const slices = [];
+    // sector boundaries
+    for (let i = 0; i < d; i++) {
+      const start = (i / d) * 2 * Math.PI - Math.PI / 2;
+      const end = ((i + 1) / d) * 2 * Math.PI - Math.PI / 2;
+      const filled = i < Math.min(n, d);
+      // If n > d (improper), we only show first d slices filled, indicate overflow separately
+      slices.push(sectorPath(cx, cy, r, start, end, filled ? color : "#fff"));
+    }
+    // Indicate improper portion as a stacked smaller pie? Simpler: a small "+ extra" overlay if n > d.
+    let overflow = "";
+    if (n > d) {
+      const extra = n - d;
+      const er = r * 0.45;
+      const ecy = cy - r - er - 2;
+      const ecx = cx;
+      const slices2 = [];
+      for (let i = 0; i < d; i++) {
+        const start = (i / d) * 2 * Math.PI - Math.PI / 2;
+        const end = ((i + 1) / d) * 2 * Math.PI - Math.PI / 2;
+        const filled = i < extra;
+        slices2.push(sectorPath(ecx, ecy, er, start, end, filled ? color : "#fff"));
+      }
+      overflow = `<g aria-hidden="true">${slices2.join("")}<circle cx="${ecx}" cy="${ecy}" r="${er}" fill="none" stroke="#000" stroke-width="1.5"/></g>`;
+    }
+    return `
+      <g role="img" aria-label="${label}: ${n}/${d}">
+        ${slices.join("")}
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#000" stroke-width="2"/>
+        ${overflow}
+      </g>
+    `;
+  }
+
+  function sectorPath(cx, cy, r, startAngle, endAngle, fill) {
+    if (endAngle - startAngle <= 0) return "";
+    if (endAngle - startAngle >= 2 * Math.PI - 1e-9) {
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="#000" stroke-width="1"/>`;
+    }
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const large = endAngle - startAngle > Math.PI ? 1 : 0;
+    return `<path d="M ${cx} ${cy} L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z" fill="${fill}" stroke="#000" stroke-width="1"/>`;
+  }
+
+  function renderBar() {
+    const w = 260, h = 140;
+    const left = 14, right = 14;
+    const barW = w - left - right;
+    const barH = 30;
+    const gap = 14;
+    const yA = 30;
+    const yB = yA + barH + gap + 16;
+
+    svgBar.innerHTML = `
+      ${barGroup(left, yA, barW, barH, state.a.n, state.a.d, "var(--block-lilac)", "분수 A")}
+      <text x="${left}" y="${yA - 8}" font-family="ui-monospace, monospace" font-size="12" fill="#000">A · ${state.a.n}/${state.a.d}</text>
+      ${barGroup(left, yB, barW, barH, state.b.n, state.b.d, "var(--block-mint)", "분수 B")}
+      <text x="${left}" y="${yB - 8}" font-family="ui-monospace, monospace" font-size="12" fill="#000">B · ${state.b.n}/${state.b.d}</text>
+    `;
+  }
+
+  function barGroup(x, y, w, h, n, d, color, label) {
+    const cellW = w / d;
+    const cells = [];
+    for (let i = 0; i < d; i++) {
+      const filled = i < Math.min(n, d);
+      cells.push(`<rect x="${(x + i * cellW).toFixed(3)}" y="${y}" width="${cellW.toFixed(3)}" height="${h}" fill="${filled ? color : "#fff"}" stroke="#000" stroke-width="1"/>`);
+    }
+    let overflow = "";
+    if (n > d) {
+      const extra = n - d;
+      const eh = h * 0.45;
+      const ey = y + h + 4;
+      const cells2 = [];
+      for (let i = 0; i < d; i++) {
+        const filled = i < extra;
+        cells2.push(`<rect x="${(x + i * cellW).toFixed(3)}" y="${ey}" width="${cellW.toFixed(3)}" height="${eh}" fill="${filled ? color : "#fff"}" stroke="#000" stroke-width="1"/>`);
+      }
+      overflow = `<g aria-hidden="true">${cells2.join("")}</g>`;
+    }
+    return `<g role="img" aria-label="${label}: ${n}/${d}">${cells.join("")}${overflow}</g>`;
+  }
+
+  function renderLine() {
+    const w = 260, h = 140;
+    const left = 16, right = 16;
+    const lineW = w - left - right;
+    const cy = h / 2;
+    const maxVal = Math.max(2, Math.ceil(Math.max(state.a.n / state.a.d, state.b.n / state.b.d) + 0.1));
+    // tick marks at 0, 1, 2 (or up to maxVal)
+    const ticks = [];
+    for (let i = 0; i <= maxVal; i++) {
+      const x = left + (i / maxVal) * lineW;
+      ticks.push(`<line x1="${x}" y1="${cy - 8}" x2="${x}" y2="${cy + 8}" stroke="#000" stroke-width="2"/>`);
+      ticks.push(`<text x="${x}" y="${cy + 26}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#000">${i}</text>`);
+    }
+    // density marks at 1/d ticks lightly
+    const minor = [];
+    const dd = Math.max(state.a.d, state.b.d);
+    for (let i = 1; i < dd * maxVal; i++) {
+      if (i % dd === 0) continue;
+      const v = i / dd;
+      if (v > maxVal) break;
+      const x = left + (v / maxVal) * lineW;
+      minor.push(`<line x1="${x}" y1="${cy - 4}" x2="${x}" y2="${cy + 4}" stroke="#000" stroke-width="0.7" opacity="0.4"/>`);
+    }
+
+    const aPos = left + (state.a.n / state.a.d / maxVal) * lineW;
+    const bPos = left + (state.b.n / state.b.d / maxVal) * lineW;
+
+    svgLine.innerHTML = `
+      <line x1="${left}" y1="${cy}" x2="${left + lineW}" y2="${cy}" stroke="#000" stroke-width="2"/>
+      ${minor.join("")}
+      ${ticks.join("")}
+      <g role="img" aria-label="분수 A 위치: ${state.a.n}/${state.a.d}">
+        <circle cx="${aPos.toFixed(3)}" cy="${cy - 22}" r="10" fill="var(--block-lilac)" stroke="#000" stroke-width="2"/>
+        <text x="${aPos.toFixed(3)}" y="${cy - 38}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#000">A</text>
+      </g>
+      <g role="img" aria-label="분수 B 위치: ${state.b.n}/${state.b.d}">
+        <circle cx="${bPos.toFixed(3)}" cy="${cy + 28}" r="10" fill="var(--block-mint)" stroke="#000" stroke-width="2"/>
+        <text x="${bPos.toFixed(3)}" y="${cy + 56}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#000">B</text>
+      </g>
+    `;
+  }
+
+  // ---------- handlers ----------
+  function onSlide() {
+    state.a.d = clamp(parseInt(denA.value, 10), 1, 12);
+    state.b.d = clamp(parseInt(denB.value, 10), 1, 12);
+    setSliderBounds();
+    state.a.n = clamp(parseInt(numA.value, 10), 0, state.a.d * 2);
+    state.b.n = clamp(parseInt(numB.value, 10), 0, state.b.d * 2);
+    commondenom.classList.remove("show");
+    renderAll();
+  }
+
+  function clamp(v, lo, hi) {
+    if (Number.isNaN(v)) return lo;
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function commonDenominator() {
+    const L = lcm(state.a.d, state.b.d);
+    const aN = state.a.n * (L / state.a.d);
+    const bN = state.b.n * (L / state.b.d);
+    commondenomText.innerHTML =
+      `공통 분모 <strong>${L}</strong> 로 통분하면: ` +
+      fracHTML(state.a.n, state.a.d) + ` = ` + fracHTML(aN, L) +
+      ` 그리고 ` + fracHTML(state.b.n, state.b.d) + ` = ` + fracHTML(bN, L) + `.`;
+    commondenom.classList.add("show");
+    showToast("통분 완료");
+  }
+
+  function fracHTML(n, d) {
+    return `<span class="frac-inline"><span class="num">${n}</span><span class="den">${d}</span></span>`;
+  }
+
+  function loadExample() {
+    exampleIdx = (exampleIdx + 1) % examples.length;
+    const ex = examples[exampleIdx];
+    state.a = { ...ex.a };
+    state.b = { ...ex.b };
+    // align bounds before applying values
+    setSliderBounds();
+    renderAll();
+    commondenom.classList.remove("show");
+    showToast("예시 불러옴");
+  }
+
+  function reset() {
+    state.a = { n: 1, d: 2 };
+    state.b = { n: 1, d: 3 };
+    setSliderBounds();
+    renderAll();
+    commondenom.classList.remove("show");
+    showToast("초기화");
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove("show"), 1600);
+  }
+
+  // ---------- PNG export ----------
+  function exportPNG() {
+    // We need to serialize the 3 SVGs (plus a heading frame) into one canvas.
+    // Resolve CSS variables for fills before serializing.
+    const cssVarValue = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#000";
+
+    const replaceVars = (svgEl) => {
+      const clone = svgEl.cloneNode(true);
+      clone.querySelectorAll("[fill]").forEach(el => {
+        const f = el.getAttribute("fill");
+        if (f && f.startsWith("var(")) {
+          const name = f.slice(4, -1).trim();
+          el.setAttribute("fill", cssVarValue(name));
+        }
+      });
+      clone.querySelectorAll("[stroke]").forEach(el => {
+        const f = el.getAttribute("stroke");
+        if (f && f.startsWith("var(")) {
+          const name = f.slice(4, -1).trim();
+          el.setAttribute("stroke", cssVarValue(name));
+        }
+      });
+      return clone;
+    };
+
+    const svgs = ["svg-pie", "svg-bar", "svg-line"].map(id => replaceVars(document.getElementById(id)));
+    const labels = ["원형", "막대", "수직선"];
+    const tileW = 320, tileH = 200, gap = 16;
+    const padding = 24, headerH = 90;
+    const cols = 3;
+    const fullW = padding * 2 + tileW * cols + gap * (cols - 1);
+    const fullH = padding * 2 + headerH + tileH + 60;
+
+    const canvas = document.createElement("canvas");
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = fullW * dpr;
+    canvas.height = fullH * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, fullW, fullH);
+
+    // header text
+    ctx.fillStyle = "#000";
+    ctx.font = "600 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillText("분수 시각화 슬라이더", padding, padding + 24);
+    ctx.font = "400 14px ui-monospace, monospace";
+    ctx.fillStyle = "#555";
+    ctx.fillText(`A = ${state.a.n}/${state.a.d}    B = ${state.b.n}/${state.b.d}`, padding, padding + 50);
+
+    // render svgs sequentially
+    let loaded = 0;
+    const total = svgs.length;
+    const onAllReady = () => {
+      const blob = canvasToBlob(canvas, "image/png");
+      blob.then(b => {
+        const url = URL.createObjectURL(b);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `fraction-${state.a.n}-${state.a.d}-vs-${state.b.n}-${state.b.d}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast("PNG 저장 완료");
+      }).catch(() => showToast("PNG 저장 실패"));
+    };
+
+    svgs.forEach((svg, i) => {
+      const xmlns = "http://www.w3.org/2000/svg";
+      // ensure xmlns
+      svg.setAttribute("xmlns", xmlns);
+      svg.setAttribute("width", tileW);
+      svg.setAttribute("height", tileH);
+      const xml = new XMLSerializer().serializeToString(svg);
+      const svg64 = btoa(unescape(encodeURIComponent(xml)));
+      const dataUrl = "data:image/svg+xml;base64," + svg64;
+      const img = new Image();
+      img.onload = () => {
+        const col = i % cols;
+        const x = padding + col * (tileW + gap);
+        const y = padding + headerH;
+        ctx.fillStyle = "#f7f7f5";
+        ctx.fillRect(x, y, tileW, tileH);
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, tileW - 2, tileH - 2);
+        ctx.drawImage(img, x + 6, y + 28, tileW - 12, tileH - 36);
+        ctx.fillStyle = "#000";
+        ctx.font = "500 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+        ctx.fillText(labels[i], x + 12, y + 20);
+        loaded++;
+        if (loaded === total) onAllReady();
+      };
+      img.onerror = () => {
+        loaded++;
+        if (loaded === total) onAllReady();
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  function canvasToBlob(canvas, type) {
+    return new Promise((resolve, reject) => {
+      if (canvas.toBlob) {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), type);
+      } else {
+        try {
+          const data = canvas.toDataURL(type);
+          const bin = atob(data.split(",")[1]);
+          const u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+          resolve(new Blob([u8], { type }));
+        } catch (e) { reject(e); }
+      }
+    });
+  }
+
+  // ---------- wire ----------
+  [numA, denA, numB, denB].forEach(el => {
+    el.addEventListener("input", onSlide);
+    el.addEventListener("change", onSlide);
+  });
+
+  document.getElementById("btn-common").addEventListener("click", commonDenominator);
+  document.getElementById("btn-example").addEventListener("click", loadExample);
+  document.getElementById("btn-reset").addEventListener("click", reset);
+  document.getElementById("btn-png").addEventListener("click", exportPNG);
+
+  // initial bounds + render
+  setSliderBounds();
+  renderAll();
+})();
+</script>
+</body>
+</html>
